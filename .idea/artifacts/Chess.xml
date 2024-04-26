@@ -1,0 +1,20 @@
+<component name="ArtifactManager">
+  <artifact type="javafx" build-on-make="true" name="Chess">
+    <output-path>$PROJECT_DIR$/out/artifacts/Chess</output-path>
+    <properties id="javafx-properties">
+      <options>
+        <option name="appClass" value="Main" />
+        <option name="description" value="" />
+        <option name="htmlPlaceholderId" value="" />
+        <option name="title" value="Chess" />
+        <option name="vendor" value="Cambrian" />
+        <option name="version" value="1" />
+      </options>
+    </properties>
+    <root id="root">
+      <element id="archive" name="Chess.jar">
+        <element id="module-output" name="Chess" />
+      </element>
+    </root>
+  </artifact>
+</component>

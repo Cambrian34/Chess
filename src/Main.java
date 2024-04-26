@@ -75,6 +75,7 @@ public class Main extends Application {
 
 
     private ArrayList<Tile> destination = new ArrayList<>();
+    private boolean test = true;
 
     public static void main(String[] args) {
         launch(args);
@@ -353,6 +354,15 @@ public class Main extends Application {
                                 tile.select();
                                 //get the piece
                                 currentPiece = tile.getPiece();
+                                //check if user clicked on the piece again then deselect
+                                if (selectedPiece == currentPiece) {
+                                    tile.deselect();
+                                    clearHighlightedTiles();
+                                    selectedPiece = null;
+                                    selectedRow = -1;
+                                    selectedCol = -1;
+                                    return;
+                                }
                                 //get the possible moves
                                 switch (currentPiece.getType()) {
                                     case PAWN:
@@ -411,23 +421,40 @@ public class Main extends Application {
                                                 }
                                             }
                                         }
+
+
+                                        // Set up mouse click event handlers outside the loop
                                         for (Tile t : destination) {
                                             t.setpossibleMove();
                                             t.setOnMouseClicked(event1 -> {
-                                                // Move the piece to the destination
-                                                t.setPiece(currentPiece);
+                                                Tile clickedTile = (Tile) event1.getSource();
+                                                // Move the piece to the clicked tile
+                                                clickedTile.setPiece(currentPiece);
                                                 tile.unsetpossibleMove();
                                                 tile.deselect();
                                                 tile.removePiece();
                                                 clearHighlightedTiles();
-                                                t.unsetpossibleMove();
-                                                //update the board
+                                                clickedTile.unsetpossibleMove();
+                                                // Update the board
 
-                                                //clear destination array
+                                                // Clear destination array
                                                 destination.clear();
 
+                                                // Remove event handlers for remaining tiles
+                                                for (Tile otherTile : destination) {
+                                                    otherTile.setOnMouseClicked(null);
+                                                    tile.unsetpossibleMove();
+                                                    tile.deselect();
+                                                }
+
                                             });
-                                        }
+
+
+
+                                }
+                                        destination.clear();
+
+
 
 
                                         break;
