@@ -1,42 +1,34 @@
 package Pieces;
 
 import Board.Tile;
-import Movement.Draggablemaker;
-import javafx.scene.*;
 import javafx.scene.image.Image;
-import javafx.scene.shape.Rectangle;
 
 import java.util.ArrayList;
 
-public abstract class ChessPiece{
+public abstract class ChessPiece {
     public PieceType type;
     public PieceColor color;
     public Image image;
     private int row;
     private int col;
-    String id;
-    protected ArrayList<Tile> possiblemoves = new ArrayList<Tile>();
-
+    protected ArrayList<Tile> possiblemoves = new ArrayList<>();
 
     public ChessPiece(PieceType type, PieceColor color, String imagePath, int row, int col) {
-       // super(50, 50);
         this.type = type;
         this.color = color;
-        this.image = new Image(imagePath);
         this.row = row;
         this.col = col;
 
-
+        // Correctly load the image as a resource from the classpath.
+        // This ensures it works even when the project is packaged into a JAR file.
+        try {
+            // Prepending "/" makes the path absolute from the root of the classpath.
+            this.image = new Image(getClass().getResourceAsStream("/" + imagePath));
+        } catch (Exception e) {
+            System.err.println("Failed to load image: " + imagePath);
+            e.printStackTrace();
+        }
     }
-    //set an id for the piece
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
-        return id;
-    }
-
 
     public int getRow() {
         return row;
@@ -62,25 +54,13 @@ public abstract class ChessPiece{
         return color;
     }
 
-    //setter for type and color
-    public void setType(PieceType type) {
-        this.type = type;
-    }
-
-    public void setColor(PieceColor color) {
-        this.color = color;
-    }
-
-
     public Image getImage() {
         return image;
     }
 
-    public abstract ArrayList<Tile> move(Tile[][] pos, int row, int col);  //Abstract Function. Must be overridden
+    public abstract ArrayList<Tile> move(Tile[][] pos, int row, int col);
 
     public abstract boolean isValidMove(int sourceRow, int sourceCol, int destRow, int destCol, ChessPiece[][] board);
-
-
-
 }
+
 

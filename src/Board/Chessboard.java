@@ -1,12 +1,184 @@
 package Board;
 
+import Pieces.*;
+
+import java.util.ArrayList;
+
+public class Chessboard {
+    public final int SIZE = 8;
+    private final Tile[][] board;
+
+    public Chessboard() {
+        // Create the Tile objects ONCE when the board is constructed.
+        board = new Tile[SIZE][SIZE];
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                board[row][col] = new Tile(col, row, null);
+            }
+        }
+        // Then, place the pieces on these tiles.
+        initializeBoard();
+    }
+
+    public void initializeBoard() {
+        // First, clear all pieces from the existing tiles.
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                board[row][col].removePiece();
+            }
+        }
+
+        // Now, set the pieces in their starting positions on the existing tiles.
+        String White_Pawn = "art/wpawn.png";
+        String Black_Pawn = "art/bpawn.png";
+        String White_Rook = "art/wrook.png";
+        String Black_Rook = "art/brook.png";
+        String White_Knight = "art/wknight.png";
+        String Black_Knight = "art/bknight.png";
+        String White_Bishop = "art/wbishop.png";
+        String Black_Bishop = "art/bbishop.png";
+        String White_Queen = "art/wqueen.png";
+        String Black_Queen = "art/bqueen.png";
+        String White_King = "art/wking.png";
+        String Black_King = "art/bking.png";
+
+        for (int i = 0; i < SIZE; i++) {
+            board[1][i].setPiece(new Pawn(PieceColor.BLACK, Black_Pawn, i, 1));
+            board[6][i].setPiece(new Pawn(PieceColor.WHITE, White_Pawn, i, 6));
+        }
+
+        board[0][0].setPiece(new Rook(PieceColor.BLACK, Black_Rook, 0, 0));
+        board[0][7].setPiece(new Rook(PieceColor.BLACK, Black_Rook, 7, 0));
+        board[7][0].setPiece(new Rook(PieceColor.WHITE, White_Rook, 0, 7));
+        board[7][7].setPiece(new Rook(PieceColor.WHITE, White_Rook, 7, 7));
+
+        board[0][1].setPiece(new Knight(PieceColor.BLACK, Black_Knight, 1, 0));
+        board[0][6].setPiece(new Knight(PieceColor.BLACK, Black_Knight, 6, 0));
+        board[7][1].setPiece(new Knight(PieceColor.WHITE, White_Knight, 1, 7));
+        board[7][6].setPiece(new Knight(PieceColor.WHITE, White_Knight, 6, 7));
+
+        board[0][2].setPiece(new Bishop(PieceColor.BLACK, Black_Bishop, 2, 0));
+        board[0][5].setPiece(new Bishop(PieceColor.BLACK, Black_Bishop, 5, 0));
+        board[7][2].setPiece(new Bishop(PieceColor.WHITE, White_Bishop, 2, 7));
+        board[7][5].setPiece(new Bishop(PieceColor.WHITE, White_Bishop, 5, 7));
+
+        board[0][3].setPiece(new Queen(PieceColor.BLACK, Black_Queen, 3, 0));
+        board[7][3].setPiece(new Queen(PieceColor.WHITE, White_Queen, 3, 7));
+
+        board[0][4].setPiece(new King(PieceColor.BLACK, Black_King, 4, 0));
+        board[7][4].setPiece(new King(PieceColor.WHITE, White_King, 4, 7));
+    }
+
+    public Tile getTile(int row, int col) {
+        if (row >= 0 && row < SIZE && col >= 0 && col < SIZE) {
+            return board[row][col];
+        }
+        return null;
+    }
+
+    public Tile[][] getBoard() {
+        return board;
+    }
+
+    public void movePiece(Tile from, Tile to) {
+        if (from.hasPiece()) {
+            ChessPiece pieceToMove = from.getPiece();
+            pieceToMove.setCol(to.getXPos());
+            pieceToMove.setRow(to.getYPos());
+            to.setPiece(pieceToMove);
+            from.removePiece();
+        }
+    }
+
+    public boolean isCheckmate(PieceColor color) {
+        if (!isKingInCheck(color)) {
+            return false;
+        }
+
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                Tile startTile = board[row][col];
+                if (startTile.hasPiece() && startTile.getPiece().getColor() == color) {
+                    ArrayList<Tile> possibleMoves = startTile.getPiece().move(board, row, col);
+                    for (Tile endTile : possibleMoves) {
+                        ChessPiece originalEndPiece = endTile.getPiece();
+                        movePiece(startTile, endTile); // Make the move
+                        if (!isKingInCheck(color)) {
+                            // Found a move to get out of check
+                            movePiece(endTile, startTile); // Move back
+                            if (originalEndPiece != null) endTile.setPiece(originalEndPiece);
+                            return false;
+                        }
+                        // Undo the move
+                        movePiece(endTile, startTile);
+                        if (originalEndPiece != null) endTile.setPiece(originalEndPiece);
+                    }
+                }
+            }
+        }
+        return true; // No move found to escape check
+    }
+
+    public boolean isStalemate(PieceColor color) {
+        if (isKingInCheck(color)) {
+            return false;
+        }
+
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                Tile tile = board[row][col];
+                if (tile.hasPiece() && tile.getPiece().getColor() == color) {
+                    ArrayList<Tile> moves = tile.getPiece().move(board, row, col);
+                    if (!moves.isEmpty()) {
+                        return false; // Found at least one legal move
+                    }
+                }
+            }
+        }
+        return true; // No legal moves found
+    }
+
+    public boolean isKingInCheck(PieceColor kingColor) {
+        Tile kingTile = findKing(kingColor);
+        if (kingTile == null) return false;
+
+        PieceColor opponentColor = (kingColor == PieceColor.WHITE) ? PieceColor.BLACK : PieceColor.WHITE;
+
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                Tile tile = board[row][col];
+                if (tile.hasPiece() && tile.getPiece().getColor() == opponentColor) {
+                    if (tile.getPiece().move(board, row, col).contains(kingTile)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public Tile findKing(PieceColor color) {
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                Tile tile = board[row][col];
+                if (tile.hasPiece() && tile.getPiece().getType() == PieceType.KING && tile.getPiece().getColor() == color) {
+                    return tile;
+                }
+            }
+        }
+        return null;
+    }
+}
+/*
+
+
 
 import Pieces.*;
 
 public class Chessboard {
     public final int SIZE = 8; // Size of the chessboard (8x8)
 
-
+    private Tile[][] board;
 
     //images for the pieces
     /*
@@ -31,7 +203,7 @@ public class Chessboard {
     Image White_King = new Image("file:art/wking.png", 40, 40, true, true);
 
     Image Black_King = new Image("file:art/bking.png", 40, 40, true, true);
-*/
+
     //String path to the image
     String White_Pawn = "file:art/wpawn.png";
     String Black_Pawn = "file:art/bpawn.png";
@@ -49,44 +221,44 @@ public class Chessboard {
 
 
 
-    private ChessPiece[][] board;
+    private ChessPiece[][] board2;
 
     public Chessboard() {
-        initializeBoard();
+        initializeBoard2();
     }
 
-    public void initializeBoard() {
+    public void initializeBoard2() {
 
-        board = new ChessPiece[SIZE][SIZE];
+        board2 = new ChessPiece[SIZE][SIZE];
 
         // Initialize the tile with pieces in their starting positions
 
         // Add pawns
         for (int i = 0; i < SIZE; i++) {
-            board[1][i]= new Pawn(PieceColor.BLACK, Black_Pawn, 1, i);
-            board[6][i]= new Pawn(PieceColor.WHITE, White_Pawn, 6, i);
+            board2[1][i]= new Pawn(PieceColor.BLACK, Black_Pawn, 1, i);
+            board2[6][i]= new Pawn(PieceColor.WHITE, White_Pawn, 6, i);
         }
         // Add rooks
-        board[0][0] = new Rook(PieceColor.BLACK, Black_Rook, 0, 0);
-        board[0][7] = new Rook(PieceColor.BLACK, Black_Rook, 0, 7);
-        board[7][0] = new Rook(PieceColor.WHITE, White_Rook, 7, 0);
-        board[7][7] = new Rook(PieceColor.WHITE, White_Rook, 7, 7);
+        board2[0][0] = new Rook(PieceColor.BLACK, Black_Rook, 0, 0);
+        board2[0][7] = new Rook(PieceColor.BLACK, Black_Rook, 0, 7);
+        board2[7][0] = new Rook(PieceColor.WHITE, White_Rook, 7, 0);
+        board2[7][7] = new Rook(PieceColor.WHITE, White_Rook, 7, 7);
         // Add knights
-        board[0][1] = new Knight(PieceColor.BLACK, Black_Knight, 0, 1);
-        board[0][6] = new Knight(PieceColor.BLACK, Black_Knight, 0, 6);
-        board[7][1] = new Knight(PieceColor.WHITE, White_Knight, 7, 1);
-        board[7][6] = new Knight(PieceColor.WHITE, White_Knight, 7, 6);
+        board2[0][1] = new Knight(PieceColor.BLACK, Black_Knight, 0, 1);
+        board2[0][6] = new Knight(PieceColor.BLACK, Black_Knight, 0, 6);
+        board2[7][1] = new Knight(PieceColor.WHITE, White_Knight, 7, 1);
+        board2[7][6] = new Knight(PieceColor.WHITE, White_Knight, 7, 6);
         // Add bishops
-        board[0][2] = new Bishop(PieceColor.BLACK, Black_Bishop, 0, 2);
-        board[0][5] = new Bishop(PieceColor.BLACK, Black_Bishop, 0, 5);
-        board[7][2] = new Bishop(PieceColor.WHITE, White_Bishop, 7, 2);
-        board[7][5] = new Bishop(PieceColor.WHITE, White_Bishop, 7, 5);
+        board2[0][2] = new Bishop(PieceColor.BLACK, Black_Bishop, 0, 2);
+        board2[0][5] = new Bishop(PieceColor.BLACK, Black_Bishop, 0, 5);
+        board2[7][2] = new Bishop(PieceColor.WHITE, White_Bishop, 7, 2);
+        board2[7][5] = new Bishop(PieceColor.WHITE, White_Bishop, 7, 5);
         // Add queens
-        board[0][3] = new Queen(PieceColor.BLACK, Black_Queen, 0, 3);
-        board[7][3] = new Queen(PieceColor.WHITE, White_Queen, 7, 3);
+        board2[0][3] = new Queen(PieceColor.BLACK, Black_Queen, 0, 3);
+        board2[7][3] = new Queen(PieceColor.WHITE, White_Queen, 7, 3);
         // Add kings
-        board[0][4] = new King(PieceColor.BLACK, Black_King, 0, 4);
-        board[7][4] = new King(PieceColor.WHITE, White_King, 7, 4);
+        board2[0][4] = new King(PieceColor.BLACK, Black_King, 0, 4);
+        board2[7][4] = new King(PieceColor.WHITE, White_King, 7, 4);
 
 
 
@@ -131,45 +303,6 @@ public class Chessboard {
         return sourcePiece.isValidMove(sourceRow, sourceCol, destRow, destCol, board);
     }
 
-    public boolean isCheckmate(PieceColor color) {
-        // Find the position of the king of the given color
-        int kingRow = -1;
-        int kingCol = -1;
-        for (int row = 0; row < SIZE; row++) {
-            for (int col = 0; col < SIZE; col++) {
-                ChessPiece piece = board[row][col];
-                if (piece instanceof King && piece.getColor() == color) {
-                    kingRow = row;
-                    kingCol = col;
-                    break;
-                }
-            }
-        }
-
-        if (kingRow == -1 || kingCol == -1) {
-            // King not found - this should not happen in a valid game state
-            return false;
-        }
-
-        // Check if the king is under attack
-        if (isUnderAttack(kingRow, kingCol, color)) {
-            // Check if the king can move to any safe squares
-            for (int row = kingRow - 1; row <= kingRow + 1; row++) {
-                for (int col = kingCol - 1; col <= kingCol + 1; col++) {
-                    if (isValidMove(kingRow, kingCol, row, col)) {
-                        // King can escape, so it's not checkmate
-                        return false;
-                    }
-                }
-            }
-
-            // King cannot escape and is under attack - it's checkmate
-            return true;
-        }
-
-        // King is not under attack - it's not checkmate
-        return false;
-    }
 
     private boolean isUnderAttack(int kingRow, int kingCol, PieceColor color) {
         // Iterate through all pieces of the opposite color
@@ -189,39 +322,17 @@ public class Chessboard {
         return false;
     }
 
-    public boolean isStalemate(PieceColor color) {
-        // Iterate through all pieces of the given color
-        for (int row = 0; row < SIZE; row++) {
-            for (int col = 0; col < SIZE; col++) {
-                ChessPiece piece = board[row][col];
-                if (piece != null && piece.getColor() == color) {
-                    // Check if the piece has any legal moves
-                    for (int destRow = 0; destRow < SIZE; destRow++) {
-                        for (int destCol = 0; destCol < SIZE; destCol++) {
-                            if (isValidMove(row, col, destRow, destCol)) {
-                                // Found a legal move - it's not a stalemate
-                                return false;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // No legal moves for any piece of the given color - it's a stalemate
-        return true;
-    }
 
 
     public ChessPiece getPiece(int row, int col) {
         if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) {
             return null; // Return null if coordinates are out of bounds
         }
-        return board[row][col]; // Otherwise, return the piece at the specified position
+        return board[row][col].getPiece(); // Otherwise, return the piece at the specified position
     }
 
     public ChessPiece getPieceAt(int row, int col) {
-        return board[row][col];
+        return board[row][col].getPiece();
     }
 
     public boolean movePiece(ChessPiece selectedPiece, int destRow, int destCol) {
@@ -254,9 +365,144 @@ public class Chessboard {
 
 
     //get path to the image
+    public void initializeBoard() {
+        board = new Tile[SIZE][SIZE];
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                board[row][col] = new Tile(col, row, null);
+            }
+        }
+
+        // Initialize pieces
+        String White_Pawn = "art/wpawn.png";
+        String Black_Pawn = "art/bpawn.png";
+        String White_Rook = "art/wrook.png";
+        String Black_Rook = "art/brook.png";
+        String White_Knight = "art/wknight.png";
+        String Black_Knight = "art/bknight.png";
+        String White_Bishop = "art/wbishop.png";
+        String Black_Bishop = "art/bbishop.png";
+        String White_Queen = "art/wqueen.png";
+        String Black_Queen = "art/bqueen.png";
+        String White_King = "art/wking.png";
+        String Black_King = "art/bking.png";
+
+        for (int i = 0; i < SIZE; i++) {
+            board[1][i].setPiece(new Pawn(PieceColor.BLACK, Black_Pawn, i, 1));
+            board[6][i].setPiece(new Pawn(PieceColor.WHITE, White_Pawn, i, 6));
+        }
+
+        board[0][0].setPiece(new Rook(PieceColor.BLACK, Black_Rook, 0, 0));
+        board[0][7].setPiece(new Rook(PieceColor.BLACK, Black_Rook, 7, 0));
+        board[7][0].setPiece(new Rook(PieceColor.WHITE, White_Rook, 0, 7));
+        board[7][7].setPiece(new Rook(PieceColor.WHITE, White_Rook, 7, 7));
+
+        board[0][1].setPiece(new Knight(PieceColor.BLACK, Black_Knight, 1, 0));
+        board[0][6].setPiece(new Knight(PieceColor.BLACK, Black_Knight, 6, 0));
+        board[7][1].setPiece(new Knight(PieceColor.WHITE, White_Knight, 1, 7));
+        board[7][6].setPiece(new Knight(PieceColor.WHITE, White_Knight, 6, 7));
+
+        board[0][2].setPiece(new Bishop(PieceColor.BLACK, Black_Bishop, 2, 0));
+        board[0][5].setPiece(new Bishop(PieceColor.BLACK, Black_Bishop, 5, 0));
+        board[7][2].setPiece(new Bishop(PieceColor.WHITE, White_Bishop, 2, 7));
+        board[7][5].setPiece(new Bishop(PieceColor.WHITE, White_Bishop, 5, 7));
+
+        board[0][3].setPiece(new Queen(PieceColor.BLACK, Black_Queen, 3, 0));
+        board[7][3].setPiece(new Queen(PieceColor.WHITE, White_Queen, 3, 7));
+
+        board[0][4].setPiece(new King(PieceColor.BLACK, Black_King, 4, 0));
+        board[7][4].setPiece(new King(PieceColor.WHITE, White_King, 4, 7));
+    }
+
+    public Tile getTile(int row, int col) {
+        return board[row][col];
+    }
+
+    public Tile[][] getBoard() {
+        return board;
+    }
+
+    public void movePiece(Tile from, Tile to) {
+        if (from.hasPiece()) {
+            to.setPiece(from.getPiece());
+            from.removePiece();
+        }
+    }
+
+    public boolean isCheckmate(PieceColor color) {
+        if (!isKingInCheck(color)) {
+            return false;
+        }
+
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                Tile tile = board[row][col];
+                if (tile.hasPiece() && tile.getPiece().getColor() == color) {
+                    for (Tile possibleMove : tile.getPiece().move(board, row, col)) {
+                        ChessPiece originalPiece = possibleMove.getPiece();
+                        movePiece(tile, possibleMove);
+                        if (!isKingInCheck(color)) {
+                            movePiece(possibleMove, tile); // Move back
+                            if (originalPiece != null) possibleMove.setPiece(originalPiece);
+                            return false;
+                        }
+                        movePiece(possibleMove, tile); // Move back
+                        if (originalPiece != null) possibleMove.setPiece(originalPiece);
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public boolean isStalemate(PieceColor color) {
+        if (isKingInCheck(color)) {
+            return false;
+        }
+
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                Tile tile = board[row][col];
+                if (tile.hasPiece() && tile.getPiece().getColor() == color) {
+                    if (!tile.getPiece().move(board, row, col).isEmpty()) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public boolean isKingInCheck(PieceColor kingColor) {
+        Tile kingTile = findKing(kingColor);
+        if (kingTile == null) return false;
+
+        PieceColor opponentColor = (kingColor == PieceColor.WHITE) ? PieceColor.BLACK : PieceColor.WHITE;
+
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                Tile tile = board[row][col];
+                if (tile.hasPiece() && tile.getPiece().getColor() == opponentColor) {
+                    if (tile.getPiece().move(board, row, col).contains(kingTile)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private Tile findKing(PieceColor color) {
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                Tile tile = board[row][col];
+                if (tile.hasPiece() && tile.getPiece().getType() == PieceType.KING && tile.getPiece().getColor() == color) {
+                    return tile;
+                }
+            }
+        }
+        return null;
+    }
 
 
-
-
-
-}
+}*/

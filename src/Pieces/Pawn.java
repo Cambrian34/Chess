@@ -2,6 +2,56 @@ package Pieces;
 
 import Board.Tile;
 import javafx.scene.image.Image;
+
+import java.util.ArrayList;
+
+public class Pawn extends ChessPiece {
+
+    public Pawn(PieceColor color, String imagePath, int row, int col) {
+        super(PieceType.PAWN, color, imagePath, row, col);
+    }
+
+    @Override
+    public ArrayList<Tile> move(Tile[][] pos, int row, int col) {
+        possiblemoves.clear();
+        int direction = (getColor() == PieceColor.WHITE) ? -1 : 1;
+        int startRow = (getColor() == PieceColor.WHITE) ? 6 : 1;
+
+        // Forward move
+        if (row + direction >= 0 && row + direction < 8 && pos[row + direction][col].getPiece() == null) {
+            possiblemoves.add(pos[row + direction][col]);
+            // Two-step forward move
+            if (row == startRow && pos[row + 2 * direction][col].getPiece() == null) {
+                possiblemoves.add(pos[row + 2 * direction][col]);
+            }
+        }
+
+        // Capture moves
+        int[] captureCols = {col - 1, col + 1};
+        for (int c : captureCols) {
+            if (c >= 0 && c < 8 && row + direction >= 0 && row + direction < 8) {
+                Tile targetTile = pos[row + direction][c];
+                if (targetTile.getPiece() != null && targetTile.getPiece().getColor() != this.getColor()) {
+                    possiblemoves.add(targetTile);
+                }
+            }
+        }
+
+        return possiblemoves;
+    }
+
+    @Override
+    public boolean isValidMove(int sourceRow, int sourceCol, int destRow, int destCol, ChessPiece[][] board) {
+        // This method is less critical now as the move generation is handled in move()
+        // but can be kept for other validation purposes if needed.
+        return true;
+    }
+}
+
+/*package Pieces;
+
+import Board.Tile;
+import javafx.scene.image.Image;
 import javafx.scene.paint.ImagePattern;
 
 import java.util.ArrayList;
@@ -20,41 +70,65 @@ public class Pawn extends ChessPiece {
     @Override
     public ArrayList<Tile> move(Tile[][] pos, int row, int col) {
         possiblemoves.clear();
-        if(getColor()==PieceColor.WHITE)
-        {
-            if(row ==0)
-                return possiblemoves;
-            if(pos[row -1][col].getPiece()==null)
-            {
-                possiblemoves.add(pos[row -1][col]);
-                if(row ==6)
-                {
-                    if(pos[4][col].getPiece()==null)
-                        possiblemoves.add(pos[4][col]);
-                }
+//        if(getColor()==PieceColor.WHITE)
+//        {
+//            if(row ==0)
+//                return possiblemoves;
+//            if(pos[row -1][col].getPiece()==null)
+//            {
+//                possiblemoves.add(pos[row -1][col]);
+//                if(row ==6)
+//                {
+//                    if(pos[4][col].getPiece()==null)
+//                        possiblemoves.add(pos[4][col]);
+//                }
+//            }
+//            if((col >0)&&(pos[row -1][col -1].getPiece()!=null)&&(pos[row -1][col -1].getPiece().getColor()!=this.getColor()))
+//                possiblemoves.add(pos[row -1][col -1]);
+//            if((col <7)&&(pos[row -1][col +1].getPiece()!=null)&&(pos[row -1][col +1].getPiece().getColor()!=this.getColor()))
+//                possiblemoves.add(pos[row -1][col +1]);
+//        }else
+//        {
+//            if(row ==8)
+//                return possiblemoves;
+//            if(pos[row +1][col].getPiece()==null)
+//            {
+//                possiblemoves.add(pos[row +1][col]);
+//                if(row ==1)
+//                {
+//                    if(pos[3][col].getPiece()==null)
+//                        possiblemoves.add(pos[3][col]);
+//                }
+//            }
+//            if((col >0)&&(pos[row +1][col -1].getPiece()!=null)&&(pos[row +1][col -1].getPiece().getColor()!=this.getColor()))
+//                possiblemoves.add(pos[row +1][col -1]);
+//            if((col <7)&&(pos[row +1][col +1].getPiece()!=null)&&(pos[row +1][col +1].getPiece().getColor()!=this.getColor()))
+//                possiblemoves.add(pos[row +1][col +1]);
+//        }
+//        return possiblemoves;
+        int direction = (getColor() == PieceColor.WHITE) ? -1 : 1;
+        int startRow = (getColor() == PieceColor.WHITE) ? 6 : 1;
+
+        // Forward move
+        if (row + direction >= 0 && row + direction < 8 && pos[row + direction][col].getPiece() == null) {
+            possiblemoves.add(pos[row + direction][col]);
+            // Two-step forward move
+            if (row == startRow && pos[row + 2 * direction][col].getPiece() == null) {
+                possiblemoves.add(pos[row + 2 * direction][col]);
             }
-            if((col >0)&&(pos[row -1][col -1].getPiece()!=null)&&(pos[row -1][col -1].getPiece().getColor()!=this.getColor()))
-                possiblemoves.add(pos[row -1][col -1]);
-            if((col <7)&&(pos[row -1][col +1].getPiece()!=null)&&(pos[row -1][col +1].getPiece().getColor()!=this.getColor()))
-                possiblemoves.add(pos[row -1][col +1]);
-        }else
-        {
-            if(row ==8)
-                return possiblemoves;
-            if(pos[row +1][col].getPiece()==null)
-            {
-                possiblemoves.add(pos[row +1][col]);
-                if(row ==1)
-                {
-                    if(pos[3][col].getPiece()==null)
-                        possiblemoves.add(pos[3][col]);
-                }
-            }
-            if((col >0)&&(pos[row +1][col -1].getPiece()!=null)&&(pos[row +1][col -1].getPiece().getColor()!=this.getColor()))
-                possiblemoves.add(pos[row +1][col -1]);
-            if((col <7)&&(pos[row +1][col +1].getPiece()!=null)&&(pos[row +1][col +1].getPiece().getColor()!=this.getColor()))
-                possiblemoves.add(pos[row +1][col +1]);
         }
+
+        // Capture moves
+        int[] captureCols = {col - 1, col + 1};
+        for (int c : captureCols) {
+            if (c >= 0 && c < 8 && row + direction >= 0 && row + direction < 8) {
+                Tile targetTile = pos[row + direction][c];
+                if (targetTile.getPiece() != null && targetTile.getPiece().getColor() != this.getColor()) {
+                    possiblemoves.add(targetTile);
+                }
+            }
+        }
+
         return possiblemoves;
     }
 
@@ -98,3 +172,5 @@ public class Pawn extends ChessPiece {
         this.hasMoved = hasMoved;
     }
 }
+*/
+

@@ -1,40 +1,339 @@
 import Board.Chessboard;
-import Movement.*;
-import Pieces.*;
 import Board.Tile;
+import Pieces.*;
 import javafx.application.Application;
-import javafx.event.EventHandler;
-import javafx.scene.Group;
-import javafx.scene.Node;
-import javafx.scene.Parent;
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
-import javafx.scene.media.Media;
-import javafx.scene.media.MediaPlayer;
-import javafx.scene.paint.ImagePattern;
-import javafx.scene.shape.Rectangle;
-import javafx.stage.Popup;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
-import java.io.File;
-import java.net.URI;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.concurrent.atomic.AtomicReference;
+
+public class Main extends Application {
+
+    private Chessboard chessboard;
+    private GridPane chessboardPane;
+    private PieceColor currentPlayer = PieceColor.WHITE;
+    private Tile selectedTile = null;
+    private ArrayList<Tile> highlightedTiles = new ArrayList<>();
+    private Label turnLabel;
+    private Stage primaryStage;
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        this.primaryStage = primaryStage;
+        primaryStage.setTitle("Chess Game");
+        primaryStage.setScene(createTitleScene());
+        primaryStage.show();
+    }
+
+    private Scene createTitleScene() {
+        AnchorPane titlePane = new AnchorPane();
+        titlePane.setPrefSize(600, 400);
+
+        try {
+            Image bgImage = new Image(getClass().getResourceAsStream("/art/Backgrd.jpeg"));
+            BackgroundImage bg = new BackgroundImage(bgImage, BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.CENTER, new BackgroundSize(600, 400, false, false, false, false));
+            titlePane.setBackground(new Background(bg));
+        } catch (Exception e) {
+            System.err.println("Cannot load background image: /art/Backgrd.jpeg");
+            titlePane.setStyle("-fx-background-color: #333;");
+        }
+
+        Label titleLabel = new Label("Chess");
+        titleLabel.setFont(Font.font("Impact", FontWeight.BOLD, 70));
+        titleLabel.setTextFill(Color.web("#EAEAEA"));
+        titleLabel.setStyle("-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.75), 5, 0.5, 2, 2);");
+        AnchorPane.setTopAnchor(titleLabel, 50.0);
+        AnchorPane.setLeftAnchor(titleLabel, 0.0);
+        AnchorPane.setRightAnchor(titleLabel, 0.0);
+        titleLabel.setAlignment(Pos.CENTER);
+
+        Button startGameButton = createMenuButton("Start Game");
+        startGameButton.setOnAction(e -> primaryStage.setScene(createGameScene()));
+
+        Button howToPlayButton = createMenuButton("How to Play");
+        howToPlayButton.setOnAction(e -> showInfoDialog("How to Play", "Select a piece and click a highlighted square to move.\nCapture all of your opponent's pieces to win!"));
+
+        Button infoButton = createMenuButton("Info");
+        infoButton.setOnAction(e -> showInfoDialog("Info", "Alistair Chambers"));
+
+        Button exitButton = createMenuButton("Exit");
+        exitButton.setOnAction(e -> Platform.exit());
+
+        HBox bottomButtons = new HBox(20, infoButton, exitButton);
+        bottomButtons.setAlignment(Pos.CENTER);
+
+        VBox menuVBox = new VBox(15, startGameButton, howToPlayButton, bottomButtons);
+        menuVBox.setAlignment(Pos.CENTER);
+
+        titlePane.getChildren().addAll(titleLabel, menuVBox);
+        AnchorPane.setBottomAnchor(menuVBox, 40.0);
+        AnchorPane.setLeftAnchor(menuVBox, 0.0);
+        AnchorPane.setRightAnchor(menuVBox, 0.0);
+
+        return new Scene(titlePane);
+    }
+
+    private Button createMenuButton(String text) {
+        Button button = new Button(text);
+        button.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        button.setPrefWidth(200);
+        button.setStyle("-fx-background-color: #E0E0E0; -fx-border-color: #B0B0B0; -fx-border-width: 2; -fx-background-radius: 5; -fx-border-radius: 5;");
+        return button;
+    }
+
+    private void showInfoDialog(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
+    private Scene createGameScene() {
+        BorderPane gamePane = new BorderPane();
+        gamePane.setStyle("-fx-background-color: #333;");
+
+        chessboardPane = createChessboardPane();
+        gamePane.setCenter(chessboardPane);
+
+        turnLabel = new Label("White's Turn");
+        turnLabel.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+        turnLabel.setTextFill(Color.WHITE);
+
+        Button pauseButton = new Button();
+        try {
+            ImageView pauseIcon = new ImageView(new Image(getClass().getResourceAsStream("/art/PauseBtn.png")));
+            pauseIcon.setFitHeight(30);
+            pauseIcon.setFitWidth(30);
+            pauseButton.setGraphic(pauseIcon);
+        } catch (Exception e) {
+            pauseButton.setText("Pause");
+        }
+        pauseButton.setStyle("-fx-background-color: transparent;");
+        pauseButton.setOnAction(e -> showPauseMenu());
+
+        HBox topBox = new HBox(150, new Label(), turnLabel, pauseButton); // Spacers
+        topBox.setAlignment(Pos.CENTER);
+        topBox.setPadding(new Insets(10));
+        gamePane.setTop(topBox);
+
+        return new Scene(gamePane, 640, 680);
+    }
+
+    private void showPauseMenu() {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.initOwner(primaryStage);
+        dialog.initStyle(StageStyle.UNDECORATED);
+
+        Label pauseTitle = new Label("Paused");
+        pauseTitle.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+
+        Button resumeButton = createMenuButton("Resume");
+        resumeButton.setOnAction(e -> dialog.close());
+
+        Button resignButton = createMenuButton("Resign");
+        resignButton.setOnAction(e -> {
+            dialog.close();
+            showGameOverDialog((currentPlayer == PieceColor.WHITE ? "Black" : "White") + " Wins by Resignation!");
+        });
+
+        Button exitButton = createMenuButton("Exit to Title");
+        exitButton.setOnAction(e -> {
+            dialog.close();
+            primaryStage.setScene(createTitleScene());
+        });
+
+        VBox pauseVBox = new VBox(15, pauseTitle, resumeButton, resignButton, exitButton);
+        pauseVBox.setAlignment(Pos.CENTER);
+        pauseVBox.setPadding(new Insets(20));
+        pauseVBox.setStyle("-fx-background-color: rgba(255, 255, 255, 0.9); -fx-border-color: black; -fx-border-width: 2;");
+
+        Scene dialogScene = new Scene(pauseVBox);
+        dialog.setScene(dialogScene);
+        dialog.showAndWait();
+    }
+
+    private GridPane createChessboardPane() {
+        chessboard = new Chessboard();
+        GridPane pane = new GridPane();
+        pane.setAlignment(Pos.CENTER);
+
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                Tile tile = chessboard.getTile(row, col);
+                tile.setOnMouseClicked(event -> handleTileClick(tile));
+                pane.add(tile, col, row);
+            }
+        }
+        return pane;
+    }
+
+    private void handleTileClick(Tile tile) {
+        if (selectedTile == null) {
+            if (tile.hasPiece() && tile.getPiece().getColor() == currentPlayer) {
+                selectedTile = tile;
+                tile.select();
+                highlightValidMoves(tile);
+            }
+        } else {
+            if (highlightedTiles.contains(tile)) {
+                PieceColor movingPlayerColor = selectedTile.getPiece().getColor();
+                ChessPiece pieceThatMoved = selectedTile.getPiece();
+                ChessPiece capturedPiece = tile.getPiece();
+                chessboard.movePiece(selectedTile, tile);
+
+                if (chessboard.isKingInCheck(movingPlayerColor)) {
+                    chessboard.movePiece(tile, selectedTile);
+                    if (capturedPiece != null) {
+                        tile.setPiece(capturedPiece);
+                    }
+                } else {
+                    checkForPawnPromotion(tile, pieceThatMoved);
+                    switchPlayer();
+                }
+            }
+            selectedTile.deselect();
+            clearHighlights();
+            selectedTile = null;
+        }
+    }
+
+    private void checkForPawnPromotion(Tile endTile, ChessPiece movedPiece) {
+        if (movedPiece.getType() == PieceType.PAWN) {
+            int endRow = endTile.getYPos();
+            if ((movedPiece.getColor() == PieceColor.WHITE && endRow == 0) || (movedPiece.getColor() == PieceColor.BLACK && endRow == 7)) {
+                showPromotionDialog(endTile);
+            }
+        }
+    }
+
+    private void showPromotionDialog(Tile pawnTile) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.initOwner(primaryStage);
+        dialog.initStyle(StageStyle.UNDECORATED);
+
+        PieceColor color = pawnTile.getPiece().getColor();
+
+        Button queenButton = new Button("Queen");
+        queenButton.setOnAction(e -> {
+            pawnTile.setPiece(new Queen(color, (color == PieceColor.WHITE ? "art/wqueen.png" : "art/bqueen.png"), pawnTile.getXPos(), pawnTile.getYPos()));
+            dialog.close();
+        });
+        Button rookButton = new Button("Rook");
+        rookButton.setOnAction(e -> {
+            pawnTile.setPiece(new Rook(color, (color == PieceColor.WHITE ? "art/wrook.png" : "art/brook.png"), pawnTile.getXPos(), pawnTile.getYPos()));
+            dialog.close();
+        });
+        Button bishopButton = new Button("Bishop");
+        bishopButton.setOnAction(e -> {
+            pawnTile.setPiece(new Bishop(color, (color == PieceColor.WHITE ? "art/wbishop.png" : "art/bbishop.png"), pawnTile.getXPos(), pawnTile.getYPos()));
+            dialog.close();
+        });
+        Button knightButton = new Button("Knight");
+        knightButton.setOnAction(e -> {
+            pawnTile.setPiece(new Knight(color, (color == PieceColor.WHITE ? "art/wknight.png" : "art/bknight.png"), pawnTile.getXPos(), pawnTile.getYPos()));
+            dialog.close();
+        });
+
+        HBox buttonBox = new HBox(10, queenButton, rookButton, bishopButton, knightButton);
+        buttonBox.setAlignment(Pos.CENTER);
+        buttonBox.setPadding(new Insets(20));
+        buttonBox.setStyle("-fx-background-color: white; -fx-border-color: black;");
+
+        Scene dialogScene = new Scene(buttonBox);
+        dialog.setScene(dialogScene);
+        dialog.showAndWait(); // This pauses execution until a choice is made
+    }
 
 
-enum GameStatus {
-    ACTIVE, BLACK_WIN, WHITE_WIN, FORFEIT, STALEMATE, RESIGNATION
+    private void highlightValidMoves(Tile originTile) {
+        ChessPiece piece = originTile.getPiece();
+        if (piece != null) {
+            ArrayList<Tile> moves = piece.move(chessboard.getBoard(), originTile.getYPos(), originTile.getXPos());
+            highlightedTiles.addAll(moves);
+            for (Tile tile : highlightedTiles) {
+                tile.setpossibleMove();
+            }
+        }
+    }
+
+    private void clearHighlights() {
+        for (Tile tile : highlightedTiles) {
+            tile.unsetpossibleMove();
+        }
+        highlightedTiles.clear();
+    }
+
+    private void switchPlayer() {
+        currentPlayer = (currentPlayer == PieceColor.WHITE) ? PieceColor.BLACK : PieceColor.WHITE;
+        turnLabel.setText(currentPlayer.toString() + "'s Turn");
+
+        if (chessboard.isCheckmate(currentPlayer)) {
+            showGameOverDialog((currentPlayer == PieceColor.WHITE ? "Black" : "White") + " Wins by Checkmate!");
+        } else if (chessboard.isStalemate(currentPlayer)) {
+            showGameOverDialog("Stalemate! The game is a draw.");
+        }
+    }
+
+    private void resetGame() {
+        primaryStage.setScene(createGameScene());
+    }
+
+    private void showGameOverDialog(String message) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.initOwner(primaryStage);
+
+        VBox dialogVBox = new VBox(20);
+        dialogVBox.setAlignment(Pos.CENTER);
+        dialogVBox.setPadding(new Insets(20));
+        dialogVBox.getChildren().add(new Label(message));
+
+        Button playAgainButton = new Button("Play Again");
+        playAgainButton.setOnAction(e -> {
+            dialog.close();
+            resetGame();
+        });
+
+        Button exitButton = new Button("Exit to Title");
+        exitButton.setOnAction(e -> {
+            dialog.close();
+            primaryStage.setScene(createTitleScene());
+        });
+
+        HBox buttonBox = new HBox(15, playAgainButton, exitButton);
+        buttonBox.setAlignment(Pos.CENTER);
+        dialogVBox.getChildren().add(buttonBox);
+
+        Scene dialogScene = new Scene(dialogVBox, 350, 150);
+        dialog.setScene(dialogScene);
+        dialog.setTitle("Game Over");
+        dialog.showAndWait();
+    }
 }
-enum Turn {
-    WHITE, BLACK
-}
 
+/*
 public class Main extends Application {
 
 
@@ -338,6 +637,11 @@ public class Main extends Application {
 
     private void onclickmov(Tile tile) {
         //event handler for the mouse click event
+    	if (currentPlayer == PieceColor.WHITE) {
+    	    currentPlayer = PieceColor.BLACK;
+    	} else {
+    	    currentPlayer = PieceColor.WHITE;
+    	}
         tile.setOnMouseClicked(event -> {
             //check whose turn it is
                     if (tile.hasPiece() && tile.getPiece().getColor() == currentPlayer) {
@@ -722,4 +1026,4 @@ public class Main extends Application {
 
 
 
-}
+}*/

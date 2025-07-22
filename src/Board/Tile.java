@@ -13,9 +13,23 @@ public class Tile extends Rectangle {
 
     public boolean select = false;
     private boolean ispossibleMove;
-    private int x,y;
+    private int x, y;
 
-    //if tile has a chess piece
+    public Tile(int x, int y, ChessPiece piece) {
+        setWidth(TILE_SIZE);
+        setHeight(TILE_SIZE);
+        this.x = x;
+        this.y = y;
+
+        relocate(x * TILE_SIZE, y * TILE_SIZE);
+
+        setFill((x + y) % 2 == 0 ? Color.rgb(240, 217, 181) : Color.rgb(181, 136, 99));
+
+        if (piece != null) {
+            setPiece(piece);
+        }
+    }
+
     public boolean hasPiece() {
         return piece != null;
     }
@@ -24,75 +38,60 @@ public class Tile extends Rectangle {
         return this.piece;
     }
 
-    public Tile(int x1, int y1, ChessPiece piece) {
-        //set the width and height of the tile
-        setWidth(50);
-        setHeight(50);
-        this.x = x1;
-        this.y = y1;
+    public int getXPos() {
+        return x;
+    }
 
-        //alternate colors
-        setFill((x + y) % 2 == 0 ? Color.WHITE : Color.BLACK);
+    public int getYPos() {
+        return y;
+    }
 
-        //set the piece
-        if(piece!= null) {
-            setPiece(piece);
+    public void setPiece(ChessPiece piece) {
+        this.piece = piece;
+        if (piece != null) {
+            ImageView img = new ImageView(piece.getImage());
+            img.setFitHeight(TILE_SIZE);
+            img.setFitWidth(TILE_SIZE);
+            this.setFill(new ImagePattern(img.getImage()));
+        } else {
+            setFill((x + y) % 2 == 0 ? Color.rgb(240, 217, 181) : Color.rgb(181, 136, 99));
         }
-
     }
 
-    //set the piece
-
-    public void setPiece(ChessPiece piece1) {
-        this.piece = piece1;
-
-        ImageView img = new ImageView(piece.getImage());
-        img.setFitHeight(TILE_SIZE);
-        img.setFitWidth(TILE_SIZE);
-
-        // Assuming 'this' represents a Rectangle
-        this.setFill(new ImagePattern(img.getImage()));
-    }
-    //remove the piece
     public void removePiece() {
-        this.piece = null;
-        // Calculate the sum of row and column indices to determine the fill color
-        int sumIndices = x+y;
-
-        // Set the fill color based on whether the sum of indices is even or odd
-        this.setFill(sumIndices % 2 == 0 ? Color.WHITE : Color.BLACK);
+        setPiece(null);
     }
 
-
-    //select the tile
     public void select() {
         select = true;
-        this.setStroke(Color.BLUE);
+        setStroke(Color.BLUE);
+        setStrokeWidth(3);
     }
 
-    //deselect the tile
     public void deselect() {
         select = false;
-        this.setStroke(null);
+        setStroke(null);
     }
 
-    //is selected
     public boolean isSelected() {
         return select;
     }
 
-    //possible move
     public void setpossibleMove() {
-        this.setStroke(Color.GREEN);
+        setFill(Color.rgb(135, 152, 106, 0.7));
         ispossibleMove = true;
     }
 
-    //not possible move
     public void unsetpossibleMove() {
-        this.setStroke(null);
+        setFill((x + y) % 2 == 0 ? Color.rgb(240, 217, 181) : Color.rgb(181, 136, 99));
+        if(hasPiece()){
+            ImageView img = new ImageView(piece.getImage());
+            img.setFitHeight(TILE_SIZE);
+            img.setFitWidth(TILE_SIZE);
+            this.setFill(new ImagePattern(img.getImage()));
+        }
         ispossibleMove = false;
     }
-
     //is possible move
     public boolean ispossibleMove() {
         return ispossibleMove;
